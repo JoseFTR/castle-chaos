@@ -6,7 +6,7 @@ const id=()=>crypto.randomBytes(8).toString('hex');
 const board=['fame','drama','rose','fame','couple','gift','heartbreak','fame','drama','rose','gift','fame','couple','heartbreak','drama','fame','rose','gift','fame','drama','couple','fame','heartbreak','gift'];
 const {nextGame}=require('./minigame-rotation');
 const die=()=>crypto.randomInt(1,7);
-const scoreCaps={tap:200,stop:500,dodge:160,memory:500};
+const scoreCaps={tap:200,stop:500,dodge:160,memory:500,reaction:200,catch:200,rhythm:200};
 const MAX_ROOMS=150, MAX_CLIENTS=300, MAX_MESSAGES_PER_10S=120;
 let activeClients=0;
 const roomTimers=new Map();
@@ -20,7 +20,7 @@ const send=(ws,obj)=>{if(ws&&ws.readyState===1){try{ws.send(JSON.stringify(obj))
 const publicState=r=>({code:r.code,phase:r.phase,host:r.host,round:r.round,turn:r.turn,players:r.players.map(({id,name,pos,fame,roses,partner,connected})=>({id,name,pos,fame,roses,partner,connected})),board,game:r.game,deadline:r.deadline,results:r.results,champion:r.champion,notice:r.notice,rolls:r.rolls||[],lastRoll:r.lastRoll||null,rollingUntil:r.rollingUntil||0,showdown:r.showdown||null});
 const broadcast=r=>(touch(r),r.players.forEach(p=>send(p.ws,{type:'state',state:publicState(r)})));
 const say=(r,s)=>{r.notice=s;broadcast(r)};
-function nextTurn(r){r.turn++;while(r.turn<r.players.length&&!r.players[r.turn].connected)r.turn++;if(r.turn>=r.players.length){const eligible=r.rolls.filter(x=>r.players.some(p=>p.id===x.id&&p.connected));const high=Math.max(0,...eligible.map(x=>x.value));const winners=eligible.filter(x=>x.value===high);for(const winner of winners){const player=r.players.find(p=>p.id===winner.id);player.fame+=winners.length===1?15:10;}r.showdown={high,winners:winners.map(x=>x.id),bonus:winners.length===1?15:10};r.phase='minigame';r.turn=0;r.game=nextGame(r);r.deadline=Date.now()+(r.game==='memory'?22000:16000);r.scores={};r.scoreMeta={};say(r,'MINI-GAME! '+({tap:'FOAM FRENZY',stop:'BRIDGE OF DOOM',dodge:'BOULDER PANIC',memory:'NINJA MEMORY'}[r.game]));r.timer=setTimeout(()=>finishGame(r),r.deadline-Date.now());}else broadcast(r)}
+function nextTurn(r){r.turn++;while(r.turn<r.players.length&&!r.players[r.turn].connected)r.turn++;if(r.turn>=r.players.length){const eligible=r.rolls.filter(x=>r.players.some(p=>p.id===x.id&&p.connected));const high=Math.max(0,...eligible.map(x=>x.value));const winners=eligible.filter(x=>x.value===high);for(const winner of winners){const player=r.players.find(p=>p.id===winner.id);player.fame+=winners.length===1?15:10;}r.showdown={high,winners:winners.map(x=>x.id),bonus:winners.length===1?15:10};r.phase='minigame';r.turn=0;r.game=nextGame(r);r.deadline=Date.now()+(r.game==='memory'?22000:16000);r.scores={};r.scoreMeta={};say(r,'MINI-GAME! '+({tap:'FOAM FRENZY',stop:'BRIDGE OF DOOM',dodge:'BOULDER PANIC',memory:'NINJA MEMORY',reaction:'SAMURAI SIGNAL',catch:'GOLDEN CATCH',rhythm:'TAIKO BEAT'}[r.game]));r.timer=setTimeout(()=>finishGame(r),r.deadline-Date.now());}else broadcast(r)}
 function finishGame(r){if(r.phase!=='minigame')return;clearTimeout(r.timer);let scores=r.players.map(p=>({id:p.id,name:p.name,score:p.connected?Math.max(0,Math.floor(r.scores[p.id]||0)):0})).sort((a,b)=>b.score-a.score);let prev=null,rank=0;scores.forEach((s,i)=>{if(s.score!==prev)rank=i+1;prev=s.score;let p=r.players.find(x=>x.id===s.id);if(p.connected){p.fame += rank===1?30:rank===2?20:rank===3?10:5;}});r.results=scores;r.phase='results';r.deadline=0;say(r,'CHALLENGE COMPLETE! Glory awaits!');}
 function finishRound(r){if(r.round>=10){r.phase='final';r.champion=[...r.players].sort((a,b)=>(b.fame+50*b.roses)-(a.fame+50*a.roses)||b.roses-a.roses)[0].id;say(r,'THE GRAND CASTLE FINALE!');return;}r.round++;r.turn=Math.max(0,r.players.findIndex(x=>x.connected));r.phase='board';r.results=[];r.rolls=[];r.lastRoll=null;r.showdown=null;r.rollingUntil=0;say(r,'Stage '+r.round+' — storm the castle!')}
 function move(r,p){
@@ -79,8 +79,8 @@ if(m.type==='create'||m.type==='join'){if(ws.room||!validName(m.name))return;if(
  if(proposed<last.value||proposed>max)return;
  // Rate-of-progress limits reduce trivial score injection but do not make browser-reported scores cheat-proof.
  const elapsed=Math.max(0,(now-last.time)/1000);
- const speed={tap:14,stop:110,dodge:12,memory:130}[r.game];
- if(proposed-last.value>Math.ceil(elapsed*speed)+({tap:2,stop:100,dodge:2,memory:50}[r.game]))return;
+ const speed={tap:14,stop:110,dodge:12,memory:130,reaction:50,catch:30,rhythm:45}[r.game];
+ if(proposed-last.value>Math.ceil(elapsed*speed)+({tap:2,stop:100,dodge:2,memory:50,reaction:35,catch:10,rhythm:25}[r.game]))return;
  if(last.updates>400)return;
  r.scores[p.id]=proposed;r.scoreMeta[p.id]={value:proposed,time:now,updates:last.updates+1};return
  }if(m.type==='next'&&r.phase==='results'&&p.id===r.host){finishRound(r);return}if(m.type==='rematch'&&r.phase==='final'&&p.id===r.host){r.players.forEach(x=>Object.assign(x,{pos:0,fame:0,roses:0,partner:null}));Object.assign(r,{phase:'board',round:1,turn:0,results:[],champion:null,rolls:[],lastRoll:null,showdown:null,rollingUntil:0,gameQueue:[],lastGame:null});broadcast(r);return}});ws.on('close',()=>{activeClients=Math.max(0,activeClients-1);let r=ws.room;if(!r)return;let p=r.players.find(x=>x.id===ws.pid);if(!p||p.ws!==ws)return;p.connected=false;if(r.phase==='lobby'){r.players=r.players.filter(x=>x.id!==p.id)}if(r.host===p.id)r.host=r.players.find(x=>x.connected)?.id||null;if(r.phase==='board'&&r.players[r.turn]?.id===p.id)nextTurn(r);if(!r.players.some(x=>x.connected)){clearTimeout(r.timer);removeRoom(r)}else broadcast(r)})});server.listen(PORT,()=>console.log('CASTLE CHAOS at http://localhost:'+PORT));

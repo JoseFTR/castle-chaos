@@ -6,3 +6,12 @@
 
 /* v1.3: reliable mouse and touch audio sliders */
 .audio-sliders label{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.audio-sliders input[type=range]{display:block;flex:1 1 120px;min-width:110px;width:auto;height:28px;appearance:auto;-webkit-appearance:auto;touch-action:pan-x;pointer-events:auto;cursor:pointer}.audio-sliders output{min-width:34px;text-align:right;font-variant-numeric:tabular-nums;color:#1e4770}
+
+/* v1.4: precise centered boulder/ninja coordinates and new skill arenas */
+.boulder{position:absolute;font-size:32px;line-height:1;transform:translate(-50%,-50%);pointer-events:none}
+#player{line-height:1;pointer-events:none;z-index:2}
+.skill-center{display:flex;align-items:center;justify-content:center;flex-direction:column;height:100%;gap:24px}
+.signal-light{font:900 55px 'Barlow Condensed',Impact,sans-serif;color:#a62d27;background:#fff1c5;border:5px solid #244665;border-radius:18px;padding:10px 30px}
+.signal-light.go{background:#6fd6a3;color:#125b37}
+.catch-target{position:absolute;font-size:40px;padding:8px 15px;transform:translate(-50%,-50%);touch-action:manipulation}
+.beat-pulse{font-size:70px;transition:transform .08s,opacity .08s}

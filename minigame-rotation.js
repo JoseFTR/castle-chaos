@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const GAMES = Object.freeze(['tap', 'stop', 'dodge', 'memory']);
+const GAMES = Object.freeze(['tap', 'stop', 'dodge', 'memory', 'reaction', 'catch', 'rhythm']);
 function shuffled(excludeLast) {
   const result = [...GAMES];
   for (let i = result.length - 1; i > 0; i--) {
