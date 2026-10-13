@@ -1,0 +1,12 @@
+{
+  "name": "castle-chaos",
+  "version": "0.4.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}
