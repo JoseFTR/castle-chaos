@@ -19,3 +19,10 @@ Core two-player game flow is testable locally. Game scoring is client-reported a
 
 ## Random mini-game rotation
 The server uses cryptographic random selection to shuffle a four-game deck. Each mini-game is played once before the deck reshuffles, and consecutive repeats are prevented. Rematches start with a fresh shuffled deck.
+
+
+## Audio update v1.2
+
+The `public/audio.js` module adds original procedural Web Audio background music and arcade/game-show effects. It does not load any external audio assets or require new dependencies. Players can mute and separately adjust music and effects; preferences are saved per browser. Browsers require a click or tap before audio begins.
+
+Upload `public/audio.js` along with the other updated files to the existing GitHub repository. Render should redeploy the existing service; do not create a new service.

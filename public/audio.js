@@ -1,0 +1,35 @@
+/* Castle Chaos v1.2: original procedural Web Audio music and sound effects. */
+(()=>{'use strict';
+const KEY='castle-chaos-audio-v1';
+let cfg={muted:false,music:0.32,effects:0.65};
+try{const old=JSON.parse(localStorage.getItem(KEY)||'{}');for(const k of Object.keys(cfg))if(typeof old[k]===typeof cfg[k])cfg[k]=old[k]}catch{}
+let ctx=null, master=null, musicBus=null, fxBus=null, timer=null, phase='off',step=0,active=false;
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}}
+function ensure(){if(ctx)return true;const C=window.AudioContext||window.webkitAudioContext;if(!C)return false;try{ctx=new C();master=ctx.createGain();musicBus=ctx.createGain();fxBus=ctx.createGain();musicBus.connect(master);fxBus.connect(master);master.connect(ctx.destination);volumes();return true}catch{return false}}
+function volumes(){if(!ctx)return;master.gain.setTargetAtTime(cfg.muted?0:0.7,ctx.currentTime,.025);musicBus.gain.setTargetAtTime(cfg.music,ctx.currentTime,.025);fxBus.gain.setTargetAtTime(cfg.effects,ctx.currentTime,.025)}
+function tone(freq,duration=.12,kind='sine',gain=.12,at=0,bus=fxBus){if(!ctx||!bus||cfg.muted)return;const t=ctx.currentTime+Math.max(0,at);let osc=ctx.createOscillator(),env=ctx.createGain();osc.type=kind;osc.frequency.setValueAtTime(Math.max(40,freq),t);env.gain.setValueAtTime(.0001,t);env.gain.exponentialRampToValueAtTime(Math.max(.0002,gain),t+.012);env.gain.exponentialRampToValueAtTime(.0001,t+Math.max(.03,duration));osc.connect(env);env.connect(bus);osc.start(t);osc.stop(t+Math.max(.04,duration)+.03)}
+function noise(d=.1,g=.09,at=0){if(!ctx||cfg.muted)return;let count=Math.max(1,Math.floor(ctx.sampleRate*d)),buf=ctx.createBuffer(1,count,ctx.sampleRate),arr=buf.getChannelData(0);for(let i=0;i<count;i++)arr[i]=(Math.random()*2-1)*(1-i/count);let src=ctx.createBufferSource(),env=ctx.createGain(),filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=1800;src.buffer=buf;env.gain.value=g;src.connect(filter);filter.connect(env);env.connect(fxBus);src.start(ctx.currentTime+at)}
+const themes={lobby:{bpm:124,notes:[60,64,67,72,67,64,62,67,60,64,69,72,74,72,67,64],bass:[48,48,53,55]},board:{bpm:135,notes:[67,69,72,69,67,64,62,64,67,72,74,72,69,67,64,62],bass:[48,55,53,55]},minigame:{bpm:162,notes:[72,74,79,74,76,79,81,79,72,76,79,84,81,79,76,74],bass:[48,55,50,53]},results:{bpm:112,notes:[72,76,79,84,79,76,74,79,72,76,81,84,86,84,79,76],bass:[48,53,55,48]},final:{bpm:100,notes:[60,64,67,72,76,72,79,84,81,79,76,72,74,79,84,88],bass:[48,53,55,48]}};
+function hz(midi){return 440*Math.pow(2,(midi-69)/12)}
+function beat(){if(!active||!ctx||cfg.muted||cfg.music===0)return;let th=themes[phase]||themes.lobby,unit=60/th.bpm/2;let i=step++%th.notes.length;tone(hz(th.notes[i]),unit*.78,'square',.035,0,musicBus);if(i%4===0)tone(hz(th.bass[Math.floor(i/4)%4]),unit*3.2,'triangle',.07,0,musicBus);if(i%2===0)tone(hz(84),.035,'sine',.008,0,musicBus)}
+function stopLoop(){if(timer){clearInterval(timer);timer=null}}
+function setPhase(p){if(p==='rolling')p='board';if(p===phase)return;phase=p;step=0;stopLoop();if(!themes[phase])return;let th=themes[phase];timer=setInterval(beat,60000/th.bpm/2);if(active)beat()}
+function unlock(){if(!ensure())return;active=true;if(ctx.state==='suspended')ctx.resume().catch(()=>{});if(!timer)setPhase(phase==='off'?'lobby':phase);volumes();updateUI()}
+function effect(name){if(!active||!ensure()||cfg.muted||cfg.effects===0)return;
+switch(name){case 'click':tone(620,.055,'square',.055);break;
+case 'join':tone(440,.13,'triangle',.12);tone(660,.16,'triangle',.12,.11);tone(880,.24,'triangle',.12,.22);break;
+case 'roll':for(let i=0;i<9;i++){tone(230+Math.random()*600,.055,'square',.055,i*.09);if(i%2===0)noise(.04,.025,i*.09)}break;
+case 'reveal':tone(392,.13,'square',.12);tone(587,.16,'square',.12,.13);tone(784,.25,'triangle',.15,.29);break;
+case 'countdown':tone(880,.08,'sine',.11);break;
+case 'go':tone(880,.11,'square',.1);tone(1175,.2,'square',.1,.12);break;
+case 'hit':tone(320,.07,'square',.1);tone(480,.09,'triangle',.08,.07);break;
+case 'oops':tone(320,.13,'sawtooth',.08);tone(220,.22,'sawtooth',.08,.12);break;
+case 'score':tone(659,.1,'triangle',.09);tone(880,.14,'triangle',.09,.1);break;
+case 'win':for(let i=0;i<6;i++)tone(hz([60,64,67,72,76,84][i]),.23,'triangle',.14,i*.14);noise(.22,.12,.55);break;
+case 'start':tone(261,.16,'square',.1);tone(392,.16,'square',.1,.16);tone(523,.26,'square',.1,.32);break;
+}}
+function updateUI(){const m=document.getElementById('audio-mute'),mv=document.getElementById('audio-music'),fv=document.getElementById('audio-effects');if(m){m.textContent=cfg.muted?'🔇 UNMUTE':'🔊 MUTE';m.setAttribute('aria-pressed',String(cfg.muted))}if(mv)mv.value=String(Math.round(cfg.music*100));if(fv)fv.value=String(Math.round(cfg.effects*100))}
+function mount(){if(document.getElementById('audio-panel'))return;const el=document.createElement('section');el.id='audio-panel';el.className='audio-panel';el.setAttribute('aria-label','Game audio settings');el.innerHTML='<div class="audio-top"><strong>🎵 GAME SHOW SOUND</strong><button type="button" id="audio-mute" aria-pressed="false">🔊 MUTE</button></div><div class="audio-sliders"><label>Music <input id="audio-music" type="range" min="0" max="100" step="1" aria-label="Music volume"></label><label>Effects <input id="audio-effects" type="range" min="0" max="100" step="1" aria-label="Sound effects volume"></label></div><small id="audio-hint">Tap anywhere to enable audio</small>';document.querySelector('.masthead')?.after(el);document.getElementById('audio-mute').addEventListener('click',()=>{unlock();cfg.muted=!cfg.muted;persist();volumes();updateUI()});for(const [id,key] of [['audio-music','music'],['audio-effects','effects']])document.getElementById(id).addEventListener('input',e=>{unlock();cfg[key]=Number(e.target.value)/100;persist();volumes();updateUI()});updateUI()}
+document.addEventListener('pointerdown',e=>{if(!active){unlock();const hint=document.getElementById('audio-hint');if(hint)hint.textContent='Original arcade soundtrack · saved per device'}if(e.target.closest('button')&&!e.target.closest('#audio-panel'))effect('click')},{passive:true});document.addEventListener('keydown',e=>{if(!active&&(e.key==='Enter'||e.key===' '))unlock()});
+window.CastleAudio={effect,setPhase,mount,unlock,config:cfg};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
