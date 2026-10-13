@@ -18,3 +18,6 @@
 
 /* v1.5: host challenge selection */
 .game-choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.game-choice-grid button{min-height:64px}.mode-controls{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+
+/* Language menu: accessible on desktop and mobile */
+.language-control{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:2px auto 16px;padding:10px 12px;background:#fffdf4;border:2px solid #203f61;border-radius:12px;max-width:470px;box-shadow:3px 4px 0 #213d5c1f}.language-control label{font-size:13px;font-weight:800;color:#1e4770}.language-control select{font:inherit;font-size:14px;font-weight:700;max-width:220px;min-width:155px;border:2px solid #1e4770;border-radius:8px;background:#fff;color:#1d2941;padding:9px 10px;cursor:pointer}.language-control select:focus-visible{outline:3px solid #f6c757;outline-offset:2px}
