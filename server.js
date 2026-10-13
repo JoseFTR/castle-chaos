@@ -29,23 +29,49 @@ function nextTurn(r){if(!r.players.some(p=>p.connected))return;r.turn++;while(r.
  r.selectionTimer=setTimeout(()=>{if(r.phase==='selection')startMiniGame(r,nextGame(r));},SELECTION_DELAY);}else startMiniGame(r,nextGame(r));}else broadcast(r)}
 const GAME_NAMES={tap:'FOAM FRENZY',stop:'BRIDGE OF DOOM',dodge:'BOULDER PANIC',memory:'NINJA MEMORY',reaction:'SAMURAI SIGNAL',catch:'GOLDEN CATCH',rhythm:'TAIKO BEAT'};
 function startMiniGame(r,game){if(!GAMES.includes(game)||!rooms.has(r.code))return;clearTimeout(r.selectionTimer);r.selectionTimer=null;r.game=game;r.lastGame=game;r.phase='minigame';r.deadline=Date.now()+(GAME_DURATION??(game==='memory'?22000:16000));r.scores={};r.scoreMeta={};say(r,'MINI-GAME! '+GAME_NAMES[game]);r.timer=setTimeout(()=>finishGame(r),r.deadline-Date.now());}
+// Balanced comeback bonuses are determined BEFORE the mini-game rewards are paid.
+// Players tied on overall Glory share the same standing; only players behind can receive a bonus.
+function comebackBonuses(players){
+ const connected=players.filter(p=>p.connected);
+ const sorted=[...connected].sort((a,b)=>b.fame-a.fame);
+ const bonus=new Map();
+ for(const p of connected){
+  const standing=1+sorted.filter(q=>q.fame>p.fame).length;
+  let amount=0;
+  if(standing>1){
+   if(connected.length===2)amount=10;
+   else if(standing>=7)amount=15;
+   else if(standing>=5)amount=10;
+   else if(standing>=3)amount=5;
+  }
+  bonus.set(p.id,amount);
+ }
+ return bonus;
+}
 function finishGame(r){
  if(r.phase!=='minigame')return;
  clearTimeout(r.timer);
  const scores=r.players.map(p=>({id:p.id,name:p.name,connected:p.connected,score:p.connected?Math.max(0,Math.floor(r.scores[p.id]||0)):0})).sort((a,b)=>Number(b.connected)-Number(a.connected)||b.score-a.score);
  const hasPositive=scores.some(s=>s.connected&&s.score>0);
+ const bonuses=comebackBonuses(r.players);
+ const multiplier=r.round===10?2:1;
  let prev=null,rank=0,position=0;
  for(const s of scores){
-  if(!s.connected){s.award=0;continue;}
+  const player=r.players.find(p=>p.id===s.id);
+  s.gloryBefore=player.fame;
+  if(!s.connected){s.baseAward=0;s.comebackBonus=0;s.award=0;s.multiplier=multiplier;s.gloryAfter=player.fame;continue;}
   position++;
   if(s.score!==prev)rank=position;
   prev=s.score;
-  // No one wins first place by submitting no score; all-zero rounds give participation only.
-  s.award=!hasPositive?5:rank===1?30:rank===2?20:rank===3?10:5;
-  const player=r.players.find(p=>p.id===s.id);
+  // A round with no positive scores earns participation only: no comeback or finale multiplier.
+  s.baseAward=!hasPositive?5:rank===1?30:rank===2?20:rank===3?15:10;
+  s.comebackBonus=hasPositive&&s.score>0?(bonuses.get(s.id)||0):0;
+  s.multiplier=hasPositive?multiplier:1;
+  s.award=s.baseAward*s.multiplier+s.comebackBonus;
   player.fame+=s.award;
+  s.gloryAfter=player.fame;
  }
- r.results=scores.map(({id,name,score,award})=>({id,name,score,award}));
+ r.results=scores.map(({id,name,score,award,baseAward,comebackBonus,multiplier,gloryBefore,gloryAfter})=>({id,name,score,award,baseAward,comebackBonus,multiplier,gloryBefore,gloryAfter}));
  r.phase='results';r.deadline=0;say(r,'CHALLENGE COMPLETE! Glory awaits!');
 }
 function finishRound(r){if(r.round>=10){r.phase='final';r.champion=[...r.players].sort((a,b)=>(b.fame+50*b.roses)-(a.fame+50*a.roses)||b.roses-a.roses)[0].id;say(r,'THE GRAND CASTLE FINALE!');return;}r.round++;r.turn=Math.max(0,r.players.findIndex(x=>x.connected));r.phase='board';r.results=[];r.rolls=[];r.lastRoll=null;r.showdown=null;r.rollingUntil=0;say(r,'Stage '+r.round+' — storm the castle!')}

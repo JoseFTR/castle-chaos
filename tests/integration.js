@@ -27,9 +27,21 @@ async function main(){const server=spawn(process.execPath,['server.js'],{cwd:req
   }
   await host.until(()=>host.state?.phase==='minigame');played.push(host.state.game);
   // One player scores; the other gets zero. The scoring should not award a first-place tie.
+  const preMini=Object.fromEntries(host.state.players.map(p=>[p.id,p.fame]));
   host.send({type:'score',score:2});
   await host.until(()=>host.state.phase==='results');
-  const results=host.state.results;assert.equal(results.length,2);assert(results.every(x=>x.award>=5));assert.equal(results.reduce((a,x)=>a+x.award,0),50);
+  const results=host.state.results;assert.equal(results.length,2);assert(results.every(x=>x.award>=5));assert.equal(results.length,2);
+  const winner=results.find(x=>x.score>0), loser=results.find(x=>x.score===0);
+  assert.equal(winner.baseAward,30);assert.equal(loser.baseAward,20);
+  assert.equal(winner.multiplier,round===10?2:1);
+  assert.equal(loser.multiplier,round===10?2:1);
+  const trailing=preMini[winner.id]<preMini[loser.id];
+  assert.equal(winner.comebackBonus,trailing?10:0);
+  assert.equal(loser.comebackBonus,0);
+  assert.equal(winner.award,30*(round===10?2:1)+(trailing?10:0));
+  assert.equal(loser.award,20*(round===10?2:1));
+  for(const result of results){const player=host.state.players.find(p=>p.id===result.id);assert.equal(result.gloryAfter,result.gloryBefore+result.award,'Glory award must be added');assert.equal(player.fame,result.gloryAfter,'Leaderboard must match the awarded Glory');}
+  await guest.until(()=>guest.state?.phase==='results'&&guest.state.round===round);for(const result of results){assert.equal(guest.state.players.find(p=>p.id===result.id).fame,result.gloryAfter,'Second device must see updated Glory');}
   host.send({type:'next'});await host.until(()=>host.state.round===round+1||host.state.phase==='final');
  }
  assert.equal(host.state.phase,'final');assert(host.state.champion);assert.equal(new Set(played.slice(0,7)).size,7,'first seven mini-games should be unique');assert.equal(host.state.players.length,2);console.log('PASS: 10 rounds, 2 players, 7 unique games, scoring, finale');
@@ -38,6 +50,22 @@ async function main(){const server=spawn(process.execPath,['server.js'],{cwd:req
  const resumed=await new Client().open();resumed.send({type:'resume',code,id:guest.identity.id,token:guest.identity.token});await resumed.until(()=>resumed.identity&&resumed.state);assert.equal(resumed.state.code,code);console.log('PASS: reconnect to active room');resumed.close();host.close();
  // Separate room in Host's Choice mode. Host leaves; remaining player gets control and auto-fallback.
  const c=await new Client().open(),d=await new Client().open();c.send({type:'create',name:'Captain'});await c.until(()=>c.identity&&c.state?.code);d.send({type:'join',name:'Survivor',code:c.state.code});await d.until(()=>d.identity&&d.state?.players.length===2);c.send({type:'mode',mode:'choice'});await c.until(()=>c.state.gameMode==='choice');c.send({type:'start'});await c.until(()=>c.state.phase==='board');await d.until(()=>d.state.phase==='board');c.close();await d.until(()=>d.state.host===d.identity.id);if(d.state.phase==='board'){d.send({type:'roll'});await d.until(()=>d.state.phase==='rolling')}await d.until(()=>d.state.phase==='selection');await d.until(()=>d.state.phase==='minigame',2000);console.log('PASS: host disconnect, reassignment, automatic game selection');await d.until(()=>d.state.phase==='results');assert.equal(d.state.results.find(x=>!x.award)?.award,0);assert.equal(d.state.results.find(x=>x.id===d.identity.id)?.award,5);console.log('PASS: all-zero scoring, disconnected player gets no reward');d.close();
+ // Regression: Samurai Signal shows different skill results and awards different Glory.
+ const a=await new Client().open(),b=await new Client().open();
+ a.send({type:'create',name:'Fast'});await a.until(()=>a.identity&&a.state?.code);
+ b.send({type:'join',name:'Slow',code:a.state.code});await b.until(()=>b.identity&&b.state?.players.length===2);
+ a.send({type:'mode',mode:'choice'});await a.until(()=>a.state.gameMode==='choice');a.send({type:'start'});await a.until(()=>a.state.phase==='board');
+ for(let i=0;i<2;i++){const actor=a.state.players[a.state.turn].id===a.identity.id?a:b;actor.send({type:'roll'});await a.until(()=>a.state.phase==='rolling');await a.until(()=>a.state.phase!=='rolling');}
+ await a.until(()=>a.state.phase==='selection');a.send({type:'chooseGame',game:'reaction'});await a.until(()=>a.state.phase==='minigame');
+ const before=Object.fromEntries(a.state.players.map(p=>[p.id,p.fame]));
+ a.send({type:'score',score:30});b.send({type:'score',score:10});
+ await a.until(()=>a.state.phase==='results');await b.until(()=>b.state.phase==='results');
+ const ra=a.state.results.find(x=>x.id===a.identity.id),rb=a.state.results.find(x=>x.id===b.identity.id);
+ assert.equal(ra.baseAward,30);assert.equal(rb.baseAward,20);
+ assert.equal(ra.award,30+(before[a.identity.id]<before[b.identity.id]?10:0));
+ assert.equal(rb.award,20+(before[b.identity.id]<before[a.identity.id]?10:0));
+ for(const result of [ra,rb]){assert.equal(result.gloryAfter,before[result.id]+result.award);assert.equal(a.state.players.find(p=>p.id===result.id).fame,result.gloryAfter);assert.equal(b.state.players.find(p=>p.id===result.id).fame,result.gloryAfter)}
+ console.log('PASS: Samurai Signal differing skill scores produce different Glory awards on both devices');a.close();b.close();
  }finally{server.kill();if(logs)console.error(logs)}
 }
 main().catch(e=>{console.error(e);process.exitCode=1});

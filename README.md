@@ -29,3 +29,7 @@ Upload `public/audio.js` along with the other updated files to the existing GitH
 
 ## Stability update v1.6
 See `CHANGELOG-v1.6.md` for the latest fixes. Run `node tests/integration.js` for the automated two-player ten-round integration test. Production uses normal timers; the accelerated test mode is enabled only in the test subprocess.
+
+
+## v1.8 comeback scoring
+See [CHANGELOG-v1.8.md](CHANGELOG-v1.8.md). Run `node tests/integration.js` for a complete two-player match and scoring assertions.
