@@ -12,13 +12,13 @@ A 2–8 player real-time Japanese obstacle game-show-inspired browser party game
 If you see `EADDRINUSE`, stop the older game server in its Terminal window with Control+C first.
 
 ## Rules
-10 stages. Each player rolls a fair independent six-sided die and advances around a 24-space board. Landing spaces grant Glory, remove Glory, grant a Golden Crown (costing 20 Glory), award a supply crate, or trigger a trap. Highest die roll gets +15 Glory; tied highest rollers get +10 each. Each stage ends with a randomly selected shared skill challenge. All four challenges appear once per shuffled cycle before any repeats, and the same challenge never appears in back-to-back stages: Foam Frenzy (tap targets), Bridge of Doom (timing), Boulder Panic (dodge), or Ninja Memory (repeat symbols). Challenge placement earns +30/+20/+10/+5 Glory. Golden Crowns add 50 points at the finale.
+10 stages. Each player rolls a fair independent six-sided die and advances around a 24-space board. Landing spaces grant Glory, remove Glory, grant a Golden Crown (costing 20 Glory), award a supply crate, or trigger a trap. Highest die roll gets +15 Glory; tied highest rollers get +10 each. Each stage ends with a randomly selected shared skill challenge. All seven challenges appear once per shuffled cycle before any repeats, and the same challenge never appears in back-to-back stages: Foam Frenzy (tap targets), Bridge of Doom (timing), Boulder Panic (dodge), or Ninja Memory (repeat symbols). Challenge placement earns +30/+20/+10/+5 Glory. Golden Crowns add 50 points at the finale.
 
 ## Testing status
 Core two-player game flow is testable locally. Game scoring is client-reported and should not be treated as cheat-proof. Room state is held in memory and disappears on server restart. Internet play requires hosting the Node server on an accessible host.
 
 ## Random mini-game rotation
-The server uses cryptographic random selection to shuffle a four-game deck. Each mini-game is played once before the deck reshuffles, and consecutive repeats are prevented. Rematches start with a fresh shuffled deck.
+The server uses cryptographic random selection to shuffle a seven-game deck. Each mini-game is played once before the deck reshuffles, and consecutive repeats are prevented. Rematches start with a fresh shuffled deck.
 
 
 ## Audio update v1.2
@@ -26,3 +26,6 @@ The server uses cryptographic random selection to shuffle a four-game deck. Each
 The `public/audio.js` module adds original procedural Web Audio background music and arcade/game-show effects. It does not load any external audio assets or require new dependencies. Players can mute and separately adjust music and effects; preferences are saved per browser. Browsers require a click or tap before audio begins.
 
 Upload `public/audio.js` along with the other updated files to the existing GitHub repository. Render should redeploy the existing service; do not create a new service.
+
+## Stability update v1.6
+See `CHANGELOG-v1.6.md` for the latest fixes. Run `node tests/integration.js` for the automated two-player ten-round integration test. Production uses normal timers; the accelerated test mode is enabled only in the test subprocess.
