@@ -15,3 +15,6 @@
 .signal-light.go{background:#6fd6a3;color:#125b37}
 .catch-target{position:absolute;font-size:40px;padding:8px 15px;transform:translate(-50%,-50%);touch-action:manipulation}
 .beat-pulse{font-size:70px;transition:transform .08s,opacity .08s}
+
+/* v1.5: host challenge selection */
+.game-choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.game-choice-grid button{min-height:64px}.mode-controls{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
